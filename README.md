@@ -34,10 +34,10 @@ clothing-store/
 | Member | Module         | Entity    | Key Screens |
 |--------|--------------- |-----------|-------------|
 | 1      | Products       | Product   | ProductList, ProductDetail, ProductForm |
-| 2      | Categories     | Category  | CategoryList, CategoryForm |
+| 2      | Payment        | Payment   | CategoryList, CategoryForm |
 | 3      | Orders         | Order     | OrderList, OrderDetail, Checkout |
 | 4      | Cart           | Cart      | CartScreen |
-| 5      | Reviews        | Review    | ReviewScreen, AddReviewScreen |
+| 5      | Tracking       | Track     | DeliveryStatus, AddReviewScreen |
 | 6      | User Profile   | User      | ProfileScreen, EditProfileScreen, ChangePasswordScreen |
 | Group  | Auth           | —         | LoginScreen, RegisterScreen |
 
