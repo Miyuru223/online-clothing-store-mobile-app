@@ -48,7 +48,7 @@ const getMyOrders = async (req, res) => {
   }
 };
 
-// GET /api/orders/all  (admin only)
+// GET /api/orders/all (admin)
 const getAllOrders = async (req, res) => {
   try {
     const orders = await Order.find()
@@ -60,7 +60,7 @@ const getAllOrders = async (req, res) => {
   }
 };
 
-// GET /api/orders/:id  (owner or admin)
+// GET /api/orders/:id (owner or admin)
 const getOrderById = async (req, res) => {
   try {
     const order = await Order.findById(req.params.id).populate('user', 'name email');
@@ -69,7 +69,6 @@ const getOrderById = async (req, res) => {
 
     const isOwner = order.user._id.toString() === req.user._id.toString();
     const isAdmin = req.user.role === 'admin';
-
     if (!isOwner && !isAdmin)
       return res.status(403).json({ success: false, message: 'Not authorized to view this order' });
 
@@ -79,7 +78,7 @@ const getOrderById = async (req, res) => {
   }
 };
 
-// PUT /api/orders/:id/status  (admin only)
+// PUT /api/orders/:id/status (admin)
 const updateOrderStatus = async (req, res) => {
   try {
     const { status } = req.body;
@@ -103,7 +102,34 @@ const updateOrderStatus = async (req, res) => {
   }
 };
 
-// DELETE /api/orders/:id  (cancel - owner only)
+// PUT /api/orders/:id/address (owner - pending only)
+const updateOrderAddress = async (req, res) => {
+  try {
+    const { shippingAddress } = req.body;
+    if (!shippingAddress || !shippingAddress.street)
+      return res.status(400).json({ success: false, message: 'Shipping address is required' });
+
+    const order = await Order.findById(req.params.id);
+    if (!order)
+      return res.status(404).json({ success: false, message: 'Order not found' });
+
+    // Only owner can edit
+    if (order.user.toString() !== req.user._id.toString())
+      return res.status(403).json({ success: false, message: 'Not authorized' });
+
+    // Only allow if Pending
+    if (order.status !== 'Pending')
+      return res.status(400).json({ success: false, message: 'You can only edit address for Pending orders' });
+
+    order.shippingAddress = shippingAddress;
+    await order.save();
+    res.json({ success: true, message: 'Address updated successfully', order });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// DELETE /api/orders/:id (cancel - owner only)
 const cancelOrder = async (req, res) => {
   try {
     const order = await Order.findById(req.params.id);
@@ -124,4 +150,7 @@ const cancelOrder = async (req, res) => {
   }
 };
 
-module.exports = { placeOrder, getMyOrders, getOrderById, getAllOrders, updateOrderStatus, cancelOrder };
+module.exports = {
+  placeOrder, getMyOrders, getOrderById,
+  getAllOrders, updateOrderStatus, updateOrderAddress, cancelOrder
+};

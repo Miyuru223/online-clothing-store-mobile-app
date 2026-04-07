@@ -4,16 +4,17 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { Text } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 
-// Screens
 import ProductListScreen from '../screens/products/ProductListScreen';
 import ProductDetailScreen from '../screens/products/ProductDetailScreen';
 import ProductFormScreen from '../screens/products/ProductFormScreen';
 import CategoryListScreen from '../screens/categories/CategoryListScreen';
 import CategoryFormScreen from '../screens/categories/CategoryFormScreen';
+import CategoryProductsScreen from '../screens/categories/CategoryProductsScreen';
 import CartScreen from '../screens/cart/CartScreen';
 import CheckoutScreen from '../screens/cart/CheckoutScreen';
 import OrderListScreen from '../screens/orders/OrderListScreen';
 import OrderDetailScreen from '../screens/orders/OrderDetailScreen';
+import EditOrderScreen from '../screens/orders/EditOrderScreen';
 import AdminOrdersScreen from '../screens/orders/AdminOrdersScreen';
 import AdminUsersScreen from '../screens/users/AdminUsersScreen';
 import TrackOrderScreen from '../screens/tracking/TrackOrderScreen';
@@ -26,8 +27,6 @@ import AddReviewScreen from '../screens/reviews/AddReviewScreen';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
-
-// ─── Shared Stacks ────────────────────────────────────────────
 
 function HomeStack() {
   return (
@@ -46,6 +45,11 @@ function CategoryStack() {
     <Stack.Navigator>
       <Stack.Screen name="CategoryList" component={CategoryListScreen} options={{ title: 'Categories' }} />
       <Stack.Screen name="CategoryForm" component={CategoryFormScreen} options={{ title: 'Add / Edit Category' }} />
+      <Stack.Screen name="CategoryProducts" component={CategoryProductsScreen} options={({ route }) => ({ title: route.params?.categoryName || 'Products' })} />
+      <Stack.Screen name="ProductDetail" component={ProductDetailScreen} options={{ title: 'Product' }} />
+      <Stack.Screen name="ProductForm" component={ProductFormScreen} options={{ title: 'Add / Edit Product' }} />
+      <Stack.Screen name="Reviews" component={ReviewScreen} options={{ title: 'Reviews' }} />
+      <Stack.Screen name="AddReview" component={AddReviewScreen} options={{ title: 'Write Review' }} />
     </Stack.Navigator>
   );
 }
@@ -59,8 +63,6 @@ function ProfileStack() {
     </Stack.Navigator>
   );
 }
-
-// ─── Customer Stacks ──────────────────────────────────────────
 
 function CartStack() {
   return (
@@ -76,6 +78,7 @@ function CustomerOrderStack() {
     <Stack.Navigator>
       <Stack.Screen name="OrderList" component={OrderListScreen} options={{ title: 'My Orders' }} />
       <Stack.Screen name="OrderDetail" component={OrderDetailScreen} options={{ title: 'Order Detail' }} />
+      <Stack.Screen name="EditOrder" component={EditOrderScreen} options={{ title: 'Edit Address' }} />
     </Stack.Navigator>
   );
 }
@@ -87,8 +90,6 @@ function CustomerTrackStack() {
     </Stack.Navigator>
   );
 }
-
-// ─── Admin Stacks ─────────────────────────────────────────────
 
 function AdminOrderStack() {
   return (
@@ -114,22 +115,11 @@ function AdminTrackStack() {
   );
 }
 
-// ─── Icon helper ──────────────────────────────────────────────
-
 const icon = (emoji) => () => <Text style={{ fontSize: 22 }}>{emoji}</Text>;
-
-// ─── Admin Navigator ──────────────────────────────────────────
 
 function AdminNavigator() {
   return (
-    <Tab.Navigator
-      screenOptions={{
-        headerShown: false,
-        tabBarActiveTintColor: '#6C63FF',
-        tabBarInactiveTintColor: '#999',
-        tabBarStyle: { paddingBottom: 5, height: 60 },
-      }}
-    >
+    <Tab.Navigator screenOptions={{ headerShown: false, tabBarActiveTintColor: '#6C63FF', tabBarInactiveTintColor: '#999', tabBarStyle: { paddingBottom: 5, height: 60 } }}>
       <Tab.Screen name="Home"       component={HomeStack}       options={{ tabBarIcon: icon('🏠'), tabBarLabel: 'Home' }} />
       <Tab.Screen name="Categories" component={CategoryStack}   options={{ tabBarIcon: icon('📂'), tabBarLabel: 'Categories' }} />
       <Tab.Screen name="Orders"     component={AdminOrderStack} options={{ tabBarIcon: icon('📦'), tabBarLabel: 'Orders' }} />
@@ -140,18 +130,9 @@ function AdminNavigator() {
   );
 }
 
-// ─── Customer Navigator ───────────────────────────────────────
-
 function CustomerNavigator() {
   return (
-    <Tab.Navigator
-      screenOptions={{
-        headerShown: false,
-        tabBarActiveTintColor: '#6C63FF',
-        tabBarInactiveTintColor: '#999',
-        tabBarStyle: { paddingBottom: 5, height: 60 },
-      }}
-    >
+    <Tab.Navigator screenOptions={{ headerShown: false, tabBarActiveTintColor: '#6C63FF', tabBarInactiveTintColor: '#999', tabBarStyle: { paddingBottom: 5, height: 60 } }}>
       <Tab.Screen name="Home"       component={HomeStack}          options={{ tabBarIcon: icon('🏠'), tabBarLabel: 'Home' }} />
       <Tab.Screen name="Categories" component={CategoryStack}      options={{ tabBarIcon: icon('📂'), tabBarLabel: 'Categories' }} />
       <Tab.Screen name="Cart"       component={CartStack}          options={{ tabBarIcon: icon('🛒'), tabBarLabel: 'Cart' }} />
@@ -161,8 +142,6 @@ function CustomerNavigator() {
     </Tab.Navigator>
   );
 }
-
-// ─── Root ─────────────────────────────────────────────────────
 
 export default function MainNavigator() {
   const { user } = useAuth();
