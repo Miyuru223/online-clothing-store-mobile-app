@@ -26,7 +26,11 @@ const orderSchema = new mongoose.Schema({
   isPaid: { type: Boolean, default: false },
   paidAt: { type: Date },
   deliveredAt: { type: Date },
-  deliveryAgent: { type: mongoose.Schema.Types.ObjectId, ref: 'DeliveryAgent', default: null },
+  deliveryAgent: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'DeliveryAgent',
+    default: null,
+  },
 }, { timestamps: true });
 
 module.exports = mongoose.model('Order', orderSchema);

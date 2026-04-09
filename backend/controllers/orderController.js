@@ -1,6 +1,20 @@
 const Order = require('../models/Order');
 const Cart = require('../models/Cart');
 
+// Status progression order — cannot go backward
+const STATUS_ORDER = ['Pending', 'Processing', 'Shipped', 'Out for Delivery', 'Delivered'];
+
+const isValidProgression = (currentStatus, newStatus) => {
+  // Cancelling is always allowed (if not already delivered/shipped)
+  if (newStatus === 'Cancelled') return true;
+  
+  const currentIndex = STATUS_ORDER.indexOf(currentStatus);
+  const newIndex = STATUS_ORDER.indexOf(newStatus);
+  
+  // New status must be strictly after current status
+  return newIndex > currentIndex;
+};
+
 // POST /api/orders
 const placeOrder = async (req, res) => {
   try {
@@ -31,7 +45,6 @@ const placeOrder = async (req, res) => {
 
     cart.items = [];
     await cart.save();
-
     res.status(201).json({ success: true, order });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -53,6 +66,7 @@ const getAllOrders = async (req, res) => {
   try {
     const orders = await Order.find()
       .populate('user', 'name email')
+      .populate('deliveryAgent', 'name agentId contactNo')
       .sort({ createdAt: -1 });
     res.json({ success: true, count: orders.length, orders });
   } catch (error) {
@@ -63,7 +77,9 @@ const getAllOrders = async (req, res) => {
 // GET /api/orders/:id (owner or admin)
 const getOrderById = async (req, res) => {
   try {
-    const order = await Order.findById(req.params.id).populate('user', 'name email');
+    const order = await Order.findById(req.params.id)
+      .populate('user', 'name email')
+      .populate('deliveryAgent', 'name agentId contactNo');
     if (!order)
       return res.status(404).json({ success: false, message: 'Order not found' });
 
@@ -82,7 +98,7 @@ const getOrderById = async (req, res) => {
 const updateOrderStatus = async (req, res) => {
   try {
     const { status } = req.body;
-    const validStatuses = ['Pending', 'Processing', 'Shipped', 'Delivered', 'Cancelled'];
+    const validStatuses = [...STATUS_ORDER, 'Cancelled'];
     if (!validStatuses.includes(status))
       return res.status(400).json({ success: false, message: 'Invalid status' });
 
@@ -90,11 +106,37 @@ const updateOrderStatus = async (req, res) => {
     if (!order)
       return res.status(404).json({ success: false, message: 'Order not found' });
 
+    // Block if already delivered or cancelled
+    if (order.status === 'Delivered')
+      return res.status(400).json({ success: false, message: 'Cannot change status of a delivered order' });
+    if (order.status === 'Cancelled')
+      return res.status(400).json({ success: false, message: 'Cannot change status of a cancelled order' });
+
+    // Block backward movement
+    if (!isValidProgression(order.status, status))
+      return res.status(400).json({
+        success: false,
+        message: `Cannot move order from "${order.status}" back to "${status}". Orders can only move forward.`,
+      });
+
+    // Block cancel if shipped or beyond
+    if (status === 'Cancelled' && ['Shipped', 'Out for Delivery', 'Delivered'].includes(order.status))
+      return res.status(400).json({ success: false, message: 'Cannot cancel an order that is already shipped or out for delivery' });
+
     order.status = status;
     if (status === 'Delivered') {
       order.isPaid = true;
       order.deliveredAt = new Date();
+      // Free up the delivery agent
+      if (order.deliveryAgent) {
+        const DeliveryAgent = require('../models/DeliveryAgent');
+        await DeliveryAgent.findByIdAndUpdate(order.deliveryAgent, {
+          isAvailable: true,
+          currentOrder: null,
+        });
+      }
     }
+
     await order.save();
     res.json({ success: true, order });
   } catch (error) {
@@ -113,11 +155,9 @@ const updateOrderAddress = async (req, res) => {
     if (!order)
       return res.status(404).json({ success: false, message: 'Order not found' });
 
-    // Only owner can edit
     if (order.user.toString() !== req.user._id.toString())
       return res.status(403).json({ success: false, message: 'Not authorized' });
 
-    // Only allow if Pending
     if (order.status !== 'Pending')
       return res.status(400).json({ success: false, message: 'You can only edit address for Pending orders' });
 
@@ -139,8 +179,11 @@ const cancelOrder = async (req, res) => {
     if (order.user.toString() !== req.user._id.toString())
       return res.status(403).json({ success: false, message: 'Not authorized' });
 
-    if (['Shipped', 'Delivered'].includes(order.status))
-      return res.status(400).json({ success: false, message: 'Cannot cancel a shipped or delivered order' });
+    if (['Shipped', 'Out for Delivery', 'Delivered'].includes(order.status))
+      return res.status(400).json({ success: false, message: 'Cannot cancel this order' });
+
+    if (order.status === 'Cancelled')
+      return res.status(400).json({ success: false, message: 'Order is already cancelled' });
 
     order.status = 'Cancelled';
     await order.save();

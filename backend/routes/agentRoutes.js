@@ -4,19 +4,17 @@ const DeliveryAgent = require('../models/DeliveryAgent');
 const Order = require('../models/Order');
 const { protect, adminOnly } = require('../middleware/authMiddleware');
 
-// GET /api/agents - get all agents
+// GET /api/agents
 router.get('/', protect, adminOnly, async (req, res) => {
   try {
-    const agents = await DeliveryAgent.find()
-      .populate('currentOrder', 'status')
-      .sort({ createdAt: -1 });
+    const agents = await DeliveryAgent.find().sort({ createdAt: -1 });
     res.json({ success: true, agents });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
 });
 
-// GET /api/agents/available - get available agents only
+// GET /api/agents/available
 router.get('/available', protect, adminOnly, async (req, res) => {
   try {
     const agents = await DeliveryAgent.find({ isAvailable: true });
@@ -26,7 +24,7 @@ router.get('/available', protect, adminOnly, async (req, res) => {
   }
 });
 
-// POST /api/agents - create agent
+// POST /api/agents
 router.post('/', protect, adminOnly, async (req, res) => {
   try {
     const { name, agentId, contactNo } = req.body;
@@ -44,7 +42,7 @@ router.post('/', protect, adminOnly, async (req, res) => {
   }
 });
 
-// PUT /api/agents/:id - update agent
+// PUT /api/agents/:id
 router.put('/:id', protect, adminOnly, async (req, res) => {
   try {
     const { name, agentId, contactNo, isAvailable } = req.body;
@@ -64,7 +62,7 @@ router.put('/:id', protect, adminOnly, async (req, res) => {
   }
 });
 
-// DELETE /api/agents/:id - delete agent
+// DELETE /api/agents/:id
 router.delete('/:id', protect, adminOnly, async (req, res) => {
   try {
     const agent = await DeliveryAgent.findById(req.params.id);
@@ -77,7 +75,7 @@ router.delete('/:id', protect, adminOnly, async (req, res) => {
   }
 });
 
-// POST /api/agents/assign - assign agent to order
+// POST /api/agents/assign — assign agent + set status to "Out for Delivery"
 router.post('/assign', protect, adminOnly, async (req, res) => {
   try {
     const { agentId, orderId } = req.body;
@@ -88,22 +86,33 @@ router.post('/assign', protect, adminOnly, async (req, res) => {
     if (!agent)
       return res.status(404).json({ success: false, message: 'Agent not found' });
 
+    if (!agent.isAvailable)
+      return res.status(400).json({ success: false, message: 'Agent is not available' });
+
     const order = await Order.findById(orderId);
     if (!order)
       return res.status(404).json({ success: false, message: 'Order not found' });
 
-    // Assign agent to order
+    // Free previous agent if reassigning
+    if (order.deliveryAgent && order.deliveryAgent.toString() !== agentId) {
+      await DeliveryAgent.findByIdAndUpdate(order.deliveryAgent, {
+        isAvailable: true,
+        currentOrder: null,
+      });
+    }
+
+    // Assign agent and set status to Out for Delivery
     order.deliveryAgent = agentId;
-    order.status = 'Shipped';
+    order.status = 'Out for Delivery';
     await order.save();
 
-    // Mark agent as unavailable
+    // Mark agent as on duty
     agent.isAvailable = false;
     agent.currentOrder = orderId;
     await agent.save();
 
     await order.populate('deliveryAgent', 'name agentId contactNo');
-    res.json({ success: true, message: 'Agent assigned successfully', order });
+    res.json({ success: true, message: 'Agent assigned — Out for Delivery', order });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
