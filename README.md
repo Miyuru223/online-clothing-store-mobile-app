@@ -38,6 +38,7 @@ clothing-store/
 | 3      | Cart management          | Cart      | CartScreen |
 | 4      | Payment management       | Payment   | CheckoutScreen |
 | 5      | Delivery and tracking management | Tracking  | TrackOrderScreen, AdminTrackScreen |
+| 6      | Order management         | Order     | OrderListScreen, OrderDetailScreen |
 | Group  | Auth                     | —         | LoginScreen, RegisterScreen |
 
 ---
